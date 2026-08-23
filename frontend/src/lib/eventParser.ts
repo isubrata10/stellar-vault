@@ -12,7 +12,7 @@ export function parseSorobanEvent(event: rpc.Api.EventResponse): NormalizedEvent
     if (event.type !== 'contract') return null;
     
     try {
-        const topics = event.topic.map(t => typeof t === 'string' ? xdr.ScVal.fromXDR(t, 'base64') : t);
+        const topics = event.topic.map(t => typeof t === 'string' ? xdr.ScVal.fromXdr(t, 'base64') : t);
         if (topics.length < 2) return null;
 
         const contractType = scValToNative(topics[0]).toString();
@@ -20,7 +20,7 @@ export function parseSorobanEvent(event: rpc.Api.EventResponse): NormalizedEvent
         
         let value: any = null;
         if (event.value) {
-            value = scValToNative(typeof event.value === 'string' ? xdr.ScVal.fromXDR(event.value, 'base64') : event.value);
+            value = scValToNative(typeof event.value === 'string' ? xdr.ScVal.fromXdr(event.value, 'base64') : event.value);
         }
 
         let message = `Unknown event: ${action}`;
@@ -65,7 +65,7 @@ export function parseSorobanEvent(event: rpc.Api.EventResponse): NormalizedEvent
             type: action,
             message,
             timestamp: event.ledgerClosedAt,
-            contractId: event.contractId,
+            contractId: event.contractId?.toString() || '',
         };
     } catch (e) {
         return null;

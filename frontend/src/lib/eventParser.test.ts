@@ -10,7 +10,7 @@ describe('Event Parser', () => {
             ledgerClosedAt: '2023-01-01T00:00:00Z',
             contractId: 'C123',
             topic: [nativeToScVal('Vault'), nativeToScVal('vault_created')],
-            value: nativeToScVal([123n, 'GDX5QG6J54T2WZY7K2C']),
+            value: nativeToScVal([BigInt(123), 'GDX5QG6J54T2WZY7K2C']),
             inSuccessfulContractCall: true,
             pagingToken: 'token1',
             ledger: 100,
