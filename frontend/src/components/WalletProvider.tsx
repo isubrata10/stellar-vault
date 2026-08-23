@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { isAllowed, setAllowed, getAddress, requestAccess } from '@stellar/freighter-api';
+import { isAllowed, setAllowed, getAddress, requestAccess, isConnected } from '@stellar/freighter-api';
 
 interface WalletContextType {
     address: string | null;
@@ -24,8 +24,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const checkConnection = async () => {
             try {
-                // @ts-ignore
-                if (window.freighter) {
+                let connected = await isConnected();
+                // Sometimes extension injection takes a few ms, try polling briefly
+                if (!connected) {
+                    await new Promise(r => setTimeout(r, 500));
+                    connected = await isConnected();
+                }
+
+                if (connected) {
                     setIsInstalled(true);
                     const allowed = await isAllowed();
                     if (allowed) {
