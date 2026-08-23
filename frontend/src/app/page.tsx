@@ -25,25 +25,6 @@ export default function Dashboard() {
         </div>
       ) : (
         <>
-          {/* Mock Metrics Row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '24px' }}>
-            <div className="liquid-glass-card" style={{ padding: '24px' }}>
-              <h4 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '8px' }}>Total Value Locked</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>$14,204,500</p>
-              <small style={{ color: 'var(--success)' }}>+2.4% this week</small>
-            </div>
-            <div className="liquid-glass-card" style={{ padding: '24px' }}>
-              <h4 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '8px' }}>Active Vaults</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>1,248</p>
-              <small style={{ color: 'var(--success)' }}>+12 new today</small>
-            </div>
-            <div className="liquid-glass-card" style={{ padding: '24px' }}>
-              <h4 style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '8px' }}>Average Treasury Yield</h4>
-              <p style={{ fontSize: '2rem', fontWeight: 'bold' }}>4.82%</p>
-              <small style={{ color: 'var(--text-secondary)' }}>Based on XLM staking</small>
-            </div>
-          </div>
-
           <div className="grid md:grid-cols-2" style={{ gap: '24px' }}>
              <div className="liquid-glass-card">
                <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>Your Secure Vaults</h3>
