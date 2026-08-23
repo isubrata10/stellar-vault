@@ -22,9 +22,6 @@ jobs:
       - name: Format Check
         run: cargo fmt --all -- --check || echo "Formatting issues found, proceeding."
 
-      - name: Build Contracts
-        run: cargo build --release
-
       - name: Run Tests
         run: cargo test --workspace
 
