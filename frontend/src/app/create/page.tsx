@@ -3,21 +3,34 @@ import { useState } from 'react';
 import { useWallet } from '@/components/WalletProvider';
 import Link from 'next/link';
 
+import { invokeContract, VAULT_CONTRACT } from '@/lib/stellar-client';
+import { Address } from '@stellar/stellar-sdk';
+
 export default function CreateVault() {
   const { address } = useWallet();
-  const [status, setStatus] = useState<'idle' | 'preparing' | 'signing' | 'submitting' | 'confirmed' | 'failed'>('idle');
+  const [status, setStatus] = useState<string>('idle');
   const [error, setError] = useState('');
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!address) return;
     setError('');
     setStatus('preparing');
     
-    // Mocking transaction for Phase 5 UI demonstration
-    // Since full Soroban integration requires complex XDR building, we mock the UI flow here.
-    setTimeout(() => setStatus('signing'), 1000);
-    setTimeout(() => setStatus('submitting'), 2500);
-    setTimeout(() => setStatus('confirmed'), 4000);
+    try {
+        await invokeContract({
+            contractId: VAULT_CONTRACT,
+            method: 'create_vault',
+            args: [
+                Address.fromString(address).toScVal()
+            ],
+            publicKey: address,
+            onStatus: (s) => setStatus(s)
+        });
+    } catch (e: any) {
+        setError(e.message || 'Unknown error');
+        setStatus('failed');
+    }
   };
 
   if (!address) {
