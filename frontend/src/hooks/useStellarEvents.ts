@@ -27,10 +27,11 @@ export function useStellarEvents() {
             try {
                 const server = new rpc.Server(RPC_URL);
                 
-                // Get latest ledger to calculate startLedger (e.g. past 1000 ledgers)
-                // For simplicity in this project, we just fetch a recent chunk or use cursor
+                const latestLedger = await server.getLatestLedger();
+                const startLedger = Math.max(0, latestLedger.sequence - 5000);
+
                 const response = await server.getEvents({
-                    startLedger: 0, 
+                    startLedger, 
                     filters: [
                         { type: 'contract', contractIds: [VAULT_CONTRACT, TREASURY_CONTRACT] }
                     ],
