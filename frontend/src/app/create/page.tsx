@@ -22,7 +22,8 @@ export default function CreateVault() {
             contractId: VAULT_CONTRACT,
             method: 'create_vault',
             args: [
-                Address.fromString(address).toScVal()
+                Address.fromString(address).toScVal(),
+                Address.fromString("CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC").toScVal() // XLM Token
             ],
             publicKey: address,
             onStatus: (s) => setStatus(s)
