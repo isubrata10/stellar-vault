@@ -47,13 +47,27 @@ export async function invokeContract({
         // 2. Prepare Transaction using simulation
         const sim = await server.simulateTransaction(tx);
         
-        if (rpc.Api.isSimulationError(sim)) {
+        console.log("Simulation Result:", sim);
+
+        // @ts-ignore
+        if (rpc.Api.isSimulationError(sim) || sim.error) {
+             // @ts-ignore
              throw new Error(`Simulation failure: ${sim.error}`);
+        }
+
+        if (rpc.Api.isSimulationRestore(sim)) {
+             throw new Error(`Contract data needs restoration. State is archived.`);
+        }
+
+        if (!sim.result) {
+            // Fallback for empty results to avoid assembleTransaction crash
+            // @ts-ignore
+            sim.result = { auth: [] };
         }
         
         // Assembling tx for signing
         // @ts-ignore
-        const builtPrepared = rpc.assembleTransaction(tx.build(), sim);
+        const builtPrepared = rpc.assembleTransaction(tx, sim);
         
         // 3. Wallet Interaction (Sign)
         onStatus?.('wallet interaction');
