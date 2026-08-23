@@ -43,7 +43,7 @@ export default function Dashboard() {
                 <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
                   {events.slice(0, 5).map(e => (
                     <li key={e.id} style={{ padding: '12px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                      <p style={{ margin: 0, color: 'white' }}>{e.message}</p>
+                      <p style={{ margin: 0, color: 'var(--text-primary)' }}>{e.message}</p>
                       <small style={{ color: 'var(--accent-color)' }}>{new Date(e.timestamp).toLocaleString()}</small>
                     </li>
                   ))}
