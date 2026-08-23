@@ -12,13 +12,13 @@ export default function Dashboard() {
       <h1>Dashboard</h1>
       
       {!address ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '60px' }}>
+        <div className="liquid-glass-card" style={{ textAlign: 'center', padding: '60px' }}>
            <h2>Welcome to StellarVault</h2>
            <p>Please connect your wallet to view your vaults and activities.</p>
         </div>
       ) : (
         <div className="grid md:grid-cols-2">
-           <div className="glass-panel">
+           <div className="liquid-glass-card">
              <h3>Your Vaults</h3>
              <div style={{ padding: '20px', border: '1px dashed var(--border-color)', borderRadius: '8px', textAlign: 'center', marginTop: '16px' }}>
                <p style={{ marginBottom: '16px' }}>You haven't created any vaults yet.</p>
@@ -28,7 +28,7 @@ export default function Dashboard() {
              </div>
            </div>
 
-           <div className="glass-panel">
+           <div className="liquid-glass-card">
              <h3>Global Activity Feed</h3>
              {error && <p style={{ color: 'var(--error)', marginTop: '16px' }}>{error}</p>}
              {loading ? (
