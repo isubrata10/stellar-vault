@@ -364,16 +364,16 @@ impl VaultContract {
         req.executed = true;
         vault.balance -= req.amount;
 
-        let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
-        let treasury_client = treasury_contract::Client::new(&env, &treasury);
-        treasury_client.release(&vault.token, &req.to, &req.amount);
-
         env.storage()
             .persistent()
             .set(&DataKey::Withdrawal(vault_id, request_id), &req);
         env.storage()
             .persistent()
             .set(&DataKey::Vault(vault_id), &vault);
+
+        let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
+        let treasury_client = treasury_contract::Client::new(&env, &treasury);
+        treasury_client.release(&vault.token, &req.to, &req.amount);
 
         env.events().publish(
             ("Vault", "withdrawal_executed"),
