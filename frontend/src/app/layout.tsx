@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Navbar />
           <div className="app-layout">
             <SidebarMenu />
-            <main className="container" style={{ flex: 1, padding: '40px 20px', overflowY: 'auto' }}>
+            <main className="container main-content-area" style={{ flex: 1, overflowY: 'auto' }}>
               {children}
             </main>
           </div>

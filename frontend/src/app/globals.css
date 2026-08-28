@@ -240,3 +240,40 @@ p {
 .sidebar-btn.active {
   background: rgba(255, 255, 255, 0.15);
 }
+
+.main-content-area {
+  padding: 40px 20px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+  
+  .sidebar-wrapper {
+    width: 100%;
+    min-height: auto;
+    margin: 16px 0;
+    padding: 16px;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .sidebar-btn {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+  }
+  
+  .container {
+    padding: 0 16px;
+  }
+  
+  .main-content-area {
+    padding: 16px 0;
+  }
+}
