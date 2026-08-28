@@ -152,7 +152,5 @@ StellarVault utilizes GitHub Actions for continuous integration. On every push t
 - Support threshold multi-signatures (e.g., 2-of-3) rather than unanimous consensus.
 
 ## Demo & Screenshots
-**Demo Link:** https://drive.google.com/drive/folders/19PvuZxU-2pjWv-MP7JcsS4XTARcN9UyX?usp=drive_link
-
-**Screenshots:**
-https://drive.google.com/drive/folders/19PvuZxU-2pjWv-MP7JcsS4XTARcN9UyX?usp=drive_link
+**Hackathon Media (Video & Screenshots):** 
+[View on Google Drive](https://drive.google.com/drive/folders/19PvuZxU-2pjWv-MP7JcsS4XTARcN9UyX?usp=drive_link)
