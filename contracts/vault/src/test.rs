@@ -1,12 +1,10 @@
 #![cfg(test)]
+extern crate std;
+
 use super::*;
 use soroban_sdk::token::Client as TokenClient;
 use soroban_sdk::token::StellarAssetClient as TokenAdminClient;
-use soroban_sdk::{testutils::Address as _, Address, Env};
-
-mod treasury_real {
-    soroban_sdk::contractimport!(file = "../../target/wasm32v1-none/release/treasury.wasm");
-}
+use soroban_sdk::{testutils::Address as _, Env};
 
 fn create_token_contract<'a>(e: &Env, admin: &Address) -> (TokenClient<'a>, TokenAdminClient<'a>) {
     let contract_address = e
@@ -18,144 +16,169 @@ fn create_token_contract<'a>(e: &Env, admin: &Address) -> (TokenClient<'a>, Toke
     )
 }
 
-fn setup_env() -> (
+fn setup_env<'a>() -> (
     Env,
-    VaultContractClient<'static>,
+    FlowPayContractClient<'a>,
     Address,
     Address,
-    TokenClient<'static>,
-    TokenAdminClient<'static>,
-    treasury_real::Client<'static>,
+    TokenClient<'a>,
+    TokenAdminClient<'a>,
 ) {
     let env = Env::default();
     env.mock_all_auths();
 
     let admin = Address::generate(&env);
 
-    let vault_id = env.register(VaultContract, ());
-    let vault_client = VaultContractClient::new(&env, &vault_id);
+    let contract_id = env.register(FlowPayContract, ());
+    let client = FlowPayContractClient::new(&env, &contract_id);
 
-    let treasury_id = env.register(treasury_real::WASM, ());
-    let treasury_client = treasury_real::Client::new(&env, &treasury_id);
+    let treasury_id = env.register(treasury_contract::WASM, ());
+    let treasury_client = treasury_contract::Client::new(&env, &treasury_id);
+    treasury_client.initialize(&contract_id);
 
-    treasury_client.initialize(&vault_id);
-    vault_client.initialize(&admin, &treasury_id);
+    client.initialize(&admin, &treasury_id);
 
     let token_admin = Address::generate(&env);
     let (token, token_admin_client) = create_token_contract(&env, &token_admin);
 
-    (
-        env,
-        vault_client,
-        admin,
-        treasury_id,
-        token,
-        token_admin_client,
-        treasury_client,
-    )
+    (env, client, admin, treasury_id, token, token_admin_client)
 }
 
 #[test]
-fn test_1_vault_creation() {
-    let (env, vault, admin, _treasury, token, _, _) = setup_env();
-    let creator = Address::generate(&env);
-
-    let v_id = vault.create_vault(&creator, &token.address);
-    assert_eq!(v_id, 1);
-
-    let state = vault.get_vault(&v_id);
-    assert_eq!(state.creator, creator);
-    assert_eq!(state.balance, 0);
-    assert_eq!(state.participant_count, 1);
-    assert_eq!(vault.get_vault_status(&v_id), VaultStatus::Active);
-}
-
-#[test]
-fn test_2_participant_authorization() {
-    let (env, vault, admin, _treasury, token, _, _) = setup_env();
-    let creator = Address::generate(&env);
-    let v_id = vault.create_vault(&creator, &token.address);
-
-    let participant = Address::generate(&env);
-    let malicious = Address::generate(&env);
-
-    // Add participant via admin (successful)
-    vault.add_participant(&v_id, &admin, &participant);
-
-    // Add participant via malicious (should fail auth, but mock_all_auths bypasses signature checks,
-    // so the logic check inside add_participant `vault.creator != admin_or_creator && !is_admin` handles it)
-    let res = vault.try_add_participant(&v_id, &malicious, &Address::generate(&env));
-    assert_eq!(res.unwrap_err().unwrap(), Error::Unauthorized);
-}
-
-#[test]
-fn test_3_deposit() {
-    let (env, vault, _, treasury, token, admin_client, treasury_client) = setup_env();
-    let creator = Address::generate(&env);
-    let v_id = vault.create_vault(&creator, &token.address);
-
-    admin_client.mint(&creator, &1000);
-    vault.deposit(&v_id, &creator, &500);
-
-    assert_eq!(vault.get_balance(&v_id), 500);
-    assert_eq!(token.balance(&treasury), 500);
-    assert_eq!(token.balance(&creator), 500);
-}
-
-#[test]
-fn test_4_withdrawal_approval() {
-    let (env, vault, _, treasury, token, admin_client, treasury_client) = setup_env();
-    let creator = Address::generate(&env);
-    let participant = Address::generate(&env);
+fn test_1_create_payment() {
+    let (env, client, _, _, token, _) = setup_env();
+    let business = Address::generate(&env);
     let recipient = Address::generate(&env);
 
-    let v_id = vault.create_vault(&creator, &token.address);
-    vault.add_participant(&v_id, &creator, &participant);
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &false);
+    assert_eq!(pid, 1);
 
-    admin_client.mint(&creator, &1000);
-    vault.deposit(&v_id, &creator, &1000);
-
-    let req_id = vault.request_withdrawal(&v_id, &participant, &recipient, &400);
-    let mut req = vault.get_withdrawal(&v_id, &req_id);
-    assert_eq!(req.approvals, 1);
-    assert_eq!(req.executed, false);
-
-    vault.approve_withdrawal(&v_id, &req_id, &creator);
-    vault.execute_withdrawal(&v_id, &req_id, &participant);
-
-    req = vault.get_withdrawal(&v_id, &req_id);
-    assert_eq!(req.executed, true);
-    assert_eq!(token.balance(&recipient), 400);
-    assert_eq!(token.balance(&treasury), 600);
-    assert_eq!(vault.get_balance(&v_id), 600);
+    let payment = client.get_payment(&pid);
+    assert_eq!(payment.amount, 1000);
+    assert_eq!(payment.state, PaymentState::Created);
 }
 
 #[test]
-fn test_5_unauthorized_withdrawal_attempt() {
-    let (env, vault, _, _, token, admin_client, _) = setup_env();
-    let creator = Address::generate(&env);
+fn test_2_funding_and_release_no_milestone() {
+    let (env, client, admin, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    token_admin.mint(&business, &2000);
+
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &false);
+    client.fund_payment(&pid, &business);
+
+    assert_eq!(token.balance(&business), 1000); // 1000 held in treasury
+    assert_eq!(client.get_payment_status(&pid), PaymentState::Funded);
+
+    client.accept_payment(&pid, &recipient);
+    assert_eq!(
+        client.get_payment_status(&pid),
+        PaymentState::SettlementPending
+    ); // jumped milestone
+
+    client.release_payment(&pid, &business);
+    assert_eq!(client.get_payment_status(&pid), PaymentState::Completed);
+    assert_eq!(token.balance(&recipient), 1000);
+}
+
+#[test]
+fn test_3_milestone_flow() {
+    let (env, client, _, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
+
+    token_admin.mint(&business, &1000);
+
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &true);
+    client.fund_payment(&pid, &business);
+
+    client.accept_payment(&pid, &recipient);
+    assert_eq!(client.get_payment_status(&pid), PaymentState::Accepted);
+
+    client.submit_milestone(&pid, &recipient);
+    assert_eq!(
+        client.get_payment_status(&pid),
+        PaymentState::MilestonePending
+    );
+
+    client.approve_milestone(&pid, &business);
+    assert_eq!(
+        client.get_payment_status(&pid),
+        PaymentState::SettlementPending
+    );
+}
+
+#[test]
+fn test_4_cancellation() {
+    let (env, client, _, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    token_admin.mint(&business, &1000);
+
+    // Cancel before funding
+    let pid1 = client.create_payment(&business, &recipient, &token.address, &500, &false);
+    client.cancel_payment(&pid1, &business);
+    assert_eq!(client.get_payment_status(&pid1), PaymentState::Cancelled);
+
+    // Cancel after funding (Refunds)
+    let pid2 = client.create_payment(&business, &recipient, &token.address, &500, &false);
+    client.fund_payment(&pid2, &business);
+    assert_eq!(token.balance(&business), 500);
+
+    client.cancel_payment(&pid2, &business);
+    assert_eq!(client.get_payment_status(&pid2), PaymentState::Refunded);
+    assert_eq!(token.balance(&business), 1000); // refunded
+}
+
+#[test]
+fn test_5_dispute_and_admin_resolve() {
+    let (env, client, admin, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    token_admin.mint(&business, &1000);
+
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &true);
+    client.fund_payment(&pid, &business);
+    client.accept_payment(&pid, &recipient);
+
+    client.raise_dispute(&pid, &recipient);
+    assert_eq!(client.get_payment_status(&pid), PaymentState::Disputed);
+
+    // Admin resolves in favor of recipient
+    client.resolve_dispute(&pid, &admin, &false);
+    assert_eq!(client.get_payment_status(&pid), PaymentState::Completed);
+    assert_eq!(token.balance(&recipient), 1000);
+}
+
+#[test]
+#[should_panic]
+fn test_6_unauthorized_release() {
+    let (env, client, _, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
     let stranger = Address::generate(&env);
+    token_admin.mint(&business, &1000);
 
-    let v_id = vault.create_vault(&creator, &token.address);
-    admin_client.mint(&creator, &1000);
-    vault.deposit(&v_id, &creator, &1000);
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &false);
+    client.fund_payment(&pid, &business);
+    client.accept_payment(&pid, &recipient);
 
-    // Stranger tries to request withdrawal
-    let res = vault.try_request_withdrawal(&v_id, &stranger, &stranger, &500);
-    assert_eq!(res.unwrap_err().unwrap(), Error::NotParticipant);
+    // Stranger tries to release
+    client.release_payment(&pid, &stranger);
+}
 
-    // Stranger tries to execute an unapproved withdrawal from creator
-    let req_id = vault.request_withdrawal(&v_id, &creator, &stranger, &100);
-    // Since participant_count = 1, creator request inherently approves it to 1, which equals participant_count.
-    // However, stranger tries to execute it
-    // Wait, the test checks unauthorized withdrawal request.
-    // Let's test a malicious actor executing without enough approvals.
+#[test]
+#[should_panic]
+fn test_7_invalid_state_transition() {
+    let (env, client, _, _, token, token_admin) = setup_env();
+    let business = Address::generate(&env);
+    let recipient = Address::generate(&env);
+    token_admin.mint(&business, &1000);
 
-    let participant = Address::generate(&env);
-    vault.add_participant(&v_id, &creator, &participant);
+    let pid = client.create_payment(&business, &recipient, &token.address, &1000, &false);
 
-    let req_id_2 = vault.request_withdrawal(&v_id, &creator, &stranger, &100);
-    // approvals = 1, count = 2.
-    let res_exec = vault.try_execute_withdrawal(&v_id, &req_id_2, &participant);
-    assert_eq!(res_exec.unwrap_err().unwrap(), Error::Unauthorized);
+    // Attempt to accept before funded
+    client.accept_payment(&pid, &recipient);
 }
