@@ -50,3 +50,23 @@ model SystemLog {
   metadata  String?  // JSON
   timestamp DateTime @default(now())
 }
+
+model UserFeedback {
+  id        String   @id @default(uuid())
+  address   String?  // Optional for anonymity
+  rating    Int
+  liked     String?
+  confused  String?
+  bugs      String?
+  features  String?
+  timestamp DateTime @default(now())
+}
+
+model UserOnboarding {
+  address      String   @id
+  hasConnected Boolean  @default(false)
+  hasCreated   Boolean  @default(false)
+  hasAccepted  Boolean  @default(false)
+  hasReleased  Boolean  @default(false)
+  timestamp    DateTime @default(now())
+}
