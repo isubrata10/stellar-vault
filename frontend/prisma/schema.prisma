@@ -82,3 +82,15 @@ model UserOnboarding {
   hasReleased  Boolean  @default(false)
   timestamp    DateTime @default(now())
 }
+
+model UserValidationFeedback {
+  id               String   @id @default(uuid())
+  address          String?
+  confusing        String?
+  expected         String?
+  liked            String?
+  wouldChange      String?
+  useAgain         Boolean  @default(true)
+  recommend        Boolean  @default(true)
+  timestamp        DateTime @default(now())
+}
