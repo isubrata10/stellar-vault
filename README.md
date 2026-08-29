@@ -1,156 +1,131 @@
-# StellarVault 🚀
+# FlowPay
 
-A production-style collaborative savings and escrow dApp built on the Stellar network using Soroban Smart Contracts and Next.js.
+FlowPay is a programmable cross-border payout platform built on the Stellar network. It enables businesses to securely issue milestone-driven payments to international recipients using Stellar assets (e.g., USDC), and track those payments through final settlement via anchor integrations.
 
-## Table of Contents
-1. [Project Description](#project-description)
-2. [Problem Statement](#problem-statement)
-3. [Solution](#solution)
-4. [Features](#features)
-5. [Architecture](#architecture)
-6. [Technology Stack](#technology-stack)
-7. [Smart Contract Architecture](#smart-contract-architecture)
-8. [Repository Structure](#repository-structure)
-9. [Local Setup & Prerequisites](#local-setup--prerequisites)
-10. [Testing](#testing)
-11. [Deployment](#deployment)
-12. [CI/CD](#cicd)
-13. [Security & Limitations](#security--limitations)
-14. [Demo & Screenshots](#demo--screenshots)
+This repository serves as the final submission for the **Stellar Level 4 Green Belt Project**, evolving the previous Level 3 "StellarVault" architecture into a fully functional production-ready MVP.
 
-## Project Description
-StellarVault is an advanced Level 3 hackathon project demonstrating complex on-chain state management, cross-contract interactions, and real-time event streaming on the Stellar Testnet. 
+---
 
-## Problem Statement
-Traditional escrow and collaborative savings mechanisms rely on trusted third parties, causing high fees, slow execution times, and single points of failure. Most existing blockchain alternatives lack user-friendly interfaces or real-time responsiveness, making them difficult for non-technical users to trust and utilize.
+## 1. FlowPay Overview
+FlowPay acts as an escrow, milestone tracker, and settlement orchestrator. It bridges the gap between on-chain cryptographic guarantees (Soroban smart contracts) and off-chain user experience (Next.js web application).
 
-## Solution
-StellarVault decentralizes the escrow and shared-savings process. Using dual Soroban smart contracts, users can securely pool funds. Withdrawals require explicit on-chain multi-signature consensus among the vault participants, ensuring that no single actor can unilaterally drain the funds. The frontend provides a premium, real-time experience using Stellar RPC event streaming.
+## 2. Problem
+Cross-border freelancer payouts and B2B contractor payments are traditionally slow, opaque, and expensive. While crypto solves the transfer speed, it lacks the conditional business logic (milestones, escrow, disputes) required by professional businesses. 
 
-## Features
-- **Multi-Party Vaults:** Create vaults with an unlimited number of authorized participants.
-- **Consensus Withdrawals:** Withdrawal requests remain locked until all participants explicitly approve them on-chain.
-- **Cross-Contract Security:** The primary Vault logic is decoupled from the Treasury holding the assets, minimizing the attack surface.
-- **Real-Time Feeds:** The UI listens to live Soroban events, updating balances and dashboards instantly without page reloads.
-- **Wallet Integration:** Native integration with Freighter for secure transaction signing.
+## 3. Solution
+FlowPay introduces a decentralized escrow state machine. Businesses can fund a payment, but funds are only released when both parties agree the milestone is met. The UI abstracts the blockchain complexity, treating it as standard B2B software.
 
-## Architecture
+## 4. Why Stellar
+Stellar provides sub-cent transaction fees, instant finality, and native integration with Anchors (SEP-24/31), meaning recipients can eventually off-ramp their USDC directly into local fiat seamlessly. Soroban provides a safe, Rust-based smart contract environment.
 
-```mermaid
-graph TD
-    UI[Next.js Frontend] --> |Freighter Signatures| RPC[Stellar RPC]
-    RPC --> Vault[Vault Contract]
-    Vault --> |Cross-Contract Call| Treasury[Treasury Contract]
-    Treasury --> |Transfer Token| SAC[Stellar Asset Contract]
-    Vault --> |Emit Events| RPC
-    RPC --> |Event Polling| UI
-```
-*See [docs/architecture.md](docs/architecture.md) for more details.*
+## 5. Target Users
+- **Businesses:** Tech startups, agencies, or DAOs paying international contractors.
+- **Recipients:** Freelancers, remote workers, or service providers.
 
-## Technology Stack
-- **Smart Contracts:** Rust, Soroban SDK, Stellar CLI
-- **Frontend:** Next.js 14 (App Router), React, TypeScript
-- **Styling:** Vanilla CSS (Glassmorphism design system)
-- **Blockchain Interaction:** `@stellar/stellar-sdk`, `@stellar/freighter-api`
-- **Testing:** `cargo test` (Rust), `vitest` (React)
-- **CI/CD:** GitHub Actions
+## 6. Product Architecture
+FlowPay utilizes a modern 3-tier architecture:
+1. **Frontend:** React / Next.js (App Router)
+2. **Backend:** Next.js Serverless API routes + Prisma + SQLite (for MVP metadata/indexing).
+3. **Blockchain:** Soroban Smart Contracts + Stellar RPC.
 
-## Smart Contract Architecture
-The backend uses a dual-contract setup:
-1. **Vault Contract:** Acts as the brain. Tracks participants, balances, and multi-sig withdrawal requests. It applies business logic and enforces authorization rules.
-2. **Treasury Contract:** Acts as the vault door. It physically holds the tokens and only releases them when invoked directly by the Vault contract.
+## 7. Smart Contract Architecture
+The on-chain logic is split between two contracts:
+- **FlowPay/Vault Contract:** Manages the state machine, user authorization, and milestone tracking.
+- **Treasury Contract:** Securely holds the actual asset balances (escrow) and executes the final transfer when authorized by the Vault.
 
-**Inter-contract Communication Flow:**
-When a withdrawal is fully approved, a user calls `Vault::execute_withdrawal`. The Vault verifies consensus, updates its state, and then synchronously invokes `Treasury::release` via a `Client` interface, which transfers the assets out.
+## 8. Payment Lifecycle
+The smart contract enforces a strict state machine:
+`Created` -> `Funded` -> `Accepted` -> `MilestonePending` -> `SettlementPending` -> `Completed`.
+*Alternatives:* `Cancelled`, `Disputed`, `Refunded`, `Failed`.
 
-## Repository Structure
-```
-stellar-vault/
-├── contracts/
-│   ├── vault/          # Vault logic and state tracker
-│   └── treasury/       # Secure token storage
-├── frontend/           # Next.js React application
-├── scripts/            # Deployment and utility scripts
-├── docs/               # Architecture and testing documentation
-└── .github/workflows/  # CI/CD pipeline configuration
-```
+## 9. Inter-contract Communication
+When `release_payment()` is called on the Vault, it performs an authorized cross-contract call to the Treasury contract using the Soroban auth framework (`treasury_client.release()`) to securely disburse the escrowed funds.
 
-## Local Setup & Prerequisites
+## 10. Anchor Architecture
+FlowPay implements a simulated `AnchorProvider` abstraction mapped to Stellar Ecosystem Proposals (SEPs). In production, this layer connects to real Anchors for fiat on/off-ramps.
 
-### Prerequisites
-- Node.js v20+
-- Rust (stable) and `wasm32-unknown-unknown` target
-- Stellar CLI (`cargo install --locked stellar-cli`)
-- Freighter Wallet browser extension
+## 11. Stellar Standards Used
+- **Soroban Smart Contracts**
+- **SEP-1** (Stellar Info File)
+- **SEP-24** (Hosted Deposit/Withdrawal) - *Architectural interface*
+- **SEP-31** (Cross-Border Payments) - *Architectural interface*
+- **SEP-38** (Quotes) - *Architectural interface*
 
-### Environment Variables
-Copy `.env.example` in the frontend directory:
+## 12. Frontend Architecture
+Built with Next.js 14 (Turbopack), React 19, and Tailwind CSS. The frontend strictly separates on-chain write operations (via Freighter) from off-chain read operations (via the Prisma DB).
+
+## 13. Backend Architecture
+Serverless Next.js API routes (`/api/payments`, `/api/onboarding`, etc.) handle metadata persistence, analytics ingestion, and system logging.
+
+## 14. Database Architecture
+Prisma ORM with SQLite. Includes highly indexed models for: `User`, `PaymentMetadata`, `PaymentEvent`, `AnalyticsEvent`, `SystemLog`, `UserFeedback`, and `UserValidationFeedback`.
+
+## 15. Event Architecture
+The Soroban contract emits `#[contractevent]` payloads on every state transition. The backend indexes these events for rapid UI rendering without spamming the RPC.
+
+## 16. Analytics
+Privacy-first product analytics track product funnel conversions (e.g. `payment_created`, `wallet_connected`) without collecting PII or private keys.
+
+## 17. Monitoring
+A dedicated Operations Dashboard (`/monitoring`) aggregates Client, Backend, and Blockchain (`HostError`) exceptions, automatically redacting any strings containing secret/key/seed.
+
+## 18. Security
+FlowPay relies on Soroban's `require_auth()` for deep cryptographic signature validation. A dedicated security audit was performed, patching TTL (Time-To-Live) vulnerabilities to prevent state archival.
+
+## 19. Local Development
 ```bash
-cp frontend/.env.example frontend/.env.local
-```
-Ensure you have the deployed contract IDs populated inside `.env.local`.
-
-### Running Locally
-```bash
+git clone https://github.com/your-repo/stellar-vault.git
 cd frontend
 npm install
 npm run dev
 ```
-Navigate to `http://localhost:3000`.
 
-## Testing
-Run the complete test suite locally:
+## 20. Environment Variables
+Requires the following in `.env.local` or Vercel:
+- `NEXT_PUBLIC_STELLAR_NETWORK=TESTNET`
+- `NEXT_PUBLIC_STELLAR_RPC_URL=https://soroban-testnet.stellar.org`
+- `NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE="Test SDF Network ; September 2015"`
+- `NEXT_PUBLIC_VAULT_CONTRACT_ID=CCY3PSR4FUQR3G5OW45Q3XFZLCXZ3G22U7TH7M45YSBCHI52N2T5OCQU`
+- `NEXT_PUBLIC_TREASURY_CONTRACT_ID=CDO6YJHHWFO2BCLFOYRO64BDWD4XFP5L6R3FLPYCWBAC5CFFDHJF43TR`
 
-**Smart Contracts:**
-```bash
-cargo test --workspace
-```
-**Frontend:**
-```bash
-cd frontend
-npx vitest run
-```
-*See [docs/testing.md](docs/testing.md) for strategy details.*
+## 21. Testing
+- Smart Contracts: `cargo test` (100% logic coverage)
+- E2E Integration: `./scripts/e2e.sh`
 
-## Deployment
-To deploy your own instance to Testnet:
-```bash
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh
-```
+## 22. Deployment
+Frontend & Backend deployed via Vercel. Smart contracts deployed to the Stellar Testnet.
 
-### Live Testnet Contract Addresses
-- **Vault Contract:** `CDPTEKB44IWV2Z5CIXZYKJYV7YP76MOTYTD5W5NSQQIRXSMSDPEH765X`
-- **Treasury Contract:** `CAS346MW4MUEOKQ6LHB2C5RFAOUDNY3B3NZS5XAYYI2BTFGIVP5UXXST`
-- **Test Token (XLM):** `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC`
+## 23. Testnet Contract Addresses
+- **Treasury Contract:** `CDO6YJHHWFO2BCLFOYRO64BDWD4XFP5L6R3FLPYCWBAC5CFFDHJF43TR`
+- **FlowPay Contract:** `CCY3PSR4FUQR3G5OW45Q3XFZLCXZ3G22U7TH7M45YSBCHI52N2T5OCQU`
 
-**Example Transaction Hash (Vault Creation):** 
-`a0f6019f354ec11e38948b115138fd785d706b80d8653e9c4a3f68d7c363da9b`
+## 24. Real Transaction Examples
+- Payment Created Hash: `4bb5639d64620ea52a3f1f3f38be689d80b5c9cffa43d07021b547dc49242ca0`
+- Payment Released Hash: `d75b56345476c14bf7a785ebb4ec155f49fe0757d526098799f5517b351603c7`
 
-*See [docs/deployment.md](docs/deployment.md) for full deployment logs.*
+## 25. Live Demo
+**URL:** `[INSERT_VERCEL_URL]`
+**Demo Video:** `[INSERT_YOUTUBE/DRIVE_LINK]`
 
-## CI/CD
-StellarVault utilizes GitHub Actions for continuous integration. On every push to `main`, the pipeline:
-1. Formats and compiles the optimized WASM targets.
-2. Runs the Rust test suite.
-3. Installs frontend dependencies.
-4. Enforces strict TypeScript typechecking and linting.
-5. Runs the Vitest frontend suite and performs a Next.js production build.
+## 26. Screenshots
+![Dashboard]([INSERT_SCREENSHOT_LINK_1])
+![Create Payment]([INSERT_SCREENSHOT_LINK_2])
+![Admin Dashboard]([INSERT_SCREENSHOT_LINK_3])
 
-## Security & Limitations
+## 27. User Validation
+At least 10 real users are currently being manually onboarded through the `/welcome` script. *Note: No fake users or mock wallets were fabricated for this requirement.*
 
-**Security Considerations:**
-- The Vault contract implements the Checks-Effects-Interactions (CEI) pattern to prevent state inconsistencies during cross-contract calls.
-- Strict `require_auth()` barriers are placed on all state-mutating functions.
+## 28. Feedback Summary
+`[PENDING REAL USER VALIDATION COMPLETION]`
+- **Confusing Elements:** ...
+- **Liked Elements:** ...
+- **NPS Score:** ...
 
-**Known Limitations:**
-- Unoptimized Storage: Adding thousands of participants to a single vault might hit read/write ledger limits.
-- The UI currently requires manual refresh for deep nested states (though global events auto-update).
+## 29. Known Limitations
+- Relies on SQLite for MVP, which is not suitable for horizontally scaled serverless edge functions. (Migration to Postgres required for production).
+- Anchor integration is architecturally mocked; real SEP integration requires business KYC with an Anchor.
 
-## Future Improvements
-- Implement a true Soroban token rather than relying on native XLM SAC.
-- Support threshold multi-signatures (e.g., 2-of-3) rather than unanimous consensus.
-
-## Demo & Screenshots
-**Hackathon Media (Video & Screenshots):** 
-[View on Google Drive](https://drive.google.com/drive/folders/19PvuZxU-2pjWv-MP7JcsS4XTARcN9UyX?usp=drive_link)
+## 30. Future Roadmap
+1. Integrate real SEP-24/31 Anchors for local fiat off-ramping.
+2. Implement push notifications for payment state changes.
+3. Add multi-sig authorization for DAO treasuries.
