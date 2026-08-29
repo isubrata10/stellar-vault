@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params;
     const events = await prisma.paymentEvent.findMany({
       where: { paymentId: params.id },
       orderBy: { timestamp: 'desc' }
@@ -15,8 +16,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const params = await context.params;
     const body = await request.json();
     const { txHash, state, actor } = body;
 
