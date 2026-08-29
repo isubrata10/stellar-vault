@@ -22,6 +22,9 @@ model PaymentMetadata {
   description      String?
   milestoneDesc    String?
   createdAt        DateTime @default(now())
+
+  @@index([businessAddress])
+  @@index([recipientAddress])
 }
 
 model PaymentEvent {
@@ -31,29 +34,38 @@ model PaymentEvent {
   state     String
   actor     String
   timestamp DateTime @default(now())
+
+  @@index([paymentId])
+  @@index([actor])
 }
 
 model AnalyticsEvent {
   id        String   @id @default(uuid())
   eventName String
-  userId    String?  // Optional, hashed or raw address depending on privacy choice
+  userId    String?
   sessionId String?
-  metadata  String?  // JSON string
+  metadata  String?
   timestamp DateTime @default(now())
+
+  @@index([eventName])
+  @@index([timestamp])
 }
 
 model SystemLog {
   id        String   @id @default(uuid())
-  level     String   // info, warn, error, fatal
-  context   String   // frontend, backend, blockchain
+  level     String
+  context   String
   message   String
-  metadata  String?  // JSON
+  metadata  String?
   timestamp DateTime @default(now())
+
+  @@index([level])
+  @@index([timestamp])
 }
 
 model UserFeedback {
   id        String   @id @default(uuid())
-  address   String?  // Optional for anonymity
+  address   String?
   rating    Int
   liked     String?
   confused  String?
