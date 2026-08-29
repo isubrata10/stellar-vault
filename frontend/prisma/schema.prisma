@@ -32,3 +32,12 @@ model PaymentEvent {
   actor     String
   timestamp DateTime @default(now())
 }
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  eventName String
+  userId    String?  // Optional, hashed or raw address depending on privacy choice
+  sessionId String?
+  metadata  String?  // JSON string
+  timestamp DateTime @default(now())
+}
