@@ -66,6 +66,7 @@ impl FlowPayContract {
         }
         env.storage().instance().set(&DataKey::Admin, &admin);
         env.storage().instance().set(&DataKey::Treasury, &treasury);
+        env.storage().instance().extend_ttl(100_000, 100_000);
         env.storage().instance().set(&DataKey::PaymentCount, &0u64);
         Ok(())
     }
@@ -129,9 +130,8 @@ impl FlowPayContract {
         treasury_client.deposit(&business, &payment.token, &payment.amount);
 
         payment.state = PaymentState::Funded;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
 
         env.events()
             .publish(("FlowPay", symbol_short!("funded")), (payment_id, business));
@@ -154,9 +154,8 @@ impl FlowPayContract {
             payment.state = PaymentState::SettlementPending;
         }
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events().publish(
             ("FlowPay", symbol_short!("accepted")),
             (payment_id, recipient),
@@ -175,9 +174,8 @@ impl FlowPayContract {
         }
 
         payment.state = PaymentState::MilestonePending;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events().publish(
             ("FlowPay", symbol_short!("ms_pend")),
             (payment_id, recipient),
@@ -196,9 +194,8 @@ impl FlowPayContract {
         }
 
         payment.state = PaymentState::SettlementPending;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events().publish(
             ("FlowPay", symbol_short!("ms_appr")),
             (payment_id, business),
@@ -228,9 +225,8 @@ impl FlowPayContract {
         }
 
         payment.state = PaymentState::Completed;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
 
         let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
         let treasury_client = treasury_contract::Client::new(&env, &treasury);
@@ -261,9 +257,8 @@ impl FlowPayContract {
             return Err(Error::InvalidState);
         }
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events().publish(
             ("FlowPay", symbol_short!("canceled")),
             (payment_id, business),
@@ -293,9 +288,8 @@ impl FlowPayContract {
         }
 
         payment.state = PaymentState::Refunded;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
 
         let treasury: Address = env.storage().instance().get(&DataKey::Treasury).unwrap();
         let treasury_client = treasury_contract::Client::new(&env, &treasury);
@@ -323,9 +317,8 @@ impl FlowPayContract {
         }
 
         payment.state = PaymentState::Disputed;
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events()
             .publish(("FlowPay", symbol_short!("disputed")), (payment_id, caller));
         Ok(())
@@ -364,9 +357,8 @@ impl FlowPayContract {
             treasury_client.release(&payment.token, &payment.recipient, &payment.amount);
         }
 
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().set(&DataKey::Payment(payment_id), &payment);
+        env.storage().persistent().extend_ttl(&DataKey::Payment(payment_id), 100_000, 100_000);
         env.events()
             .publish(("FlowPay", symbol_short!("resolved")), (payment_id, refund));
         Ok(())
