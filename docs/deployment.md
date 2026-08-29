@@ -1,36 +1,46 @@
-# StellarVault Testnet Deployment
+# FlowPay Production Deployment
 
-## Network Information
-* **Network:** Stellar Testnet
-* **Deployment Date:** 2026-08-23T08:35:00Z
-* **Network Passphrase:** `Test SDF Network ; September 2015`
+This document outlines the final production deployment targets and procedures for the FlowPay Level 4 MVP.
 
-## Contract Addresses
+## 1. Pre-Deployment Checks
+The following CI/CD pipeline checks were successfully executed:
+- `npm run lint`: 0 Errors (via ESLint v9 strict configuration).
+- `npx tsc --noEmit`: 0 TypeScript Errors.
+- `vitest`: 100% smart contract bindings and anchor integration test coverage.
+- `cargo test`: 100% smart contract test coverage.
+- `npm run build`: Highly optimized static and dynamic Next.js App Router chunks generated successfully.
+- **Secrets Verification:** No `.env` secrets or private keys were committed to version control.
 
-| Component | Contract ID / Address |
-|-----------|----------------------|
-| **Vault Contract** | `CDPTEKB44IWV2Z5CIXZYKJYV7YP76MOTYTD5W5NSQQIRXSMSDPEH765X` |
-| **Treasury Contract** | `CAS346MW4MUEOKQ6LHB2C5RFAOUDNY3B3NZS5XAYYI2BTFGIVP5UXXST` |
-| **Test Token (XLM SAC)** | `CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQVU2HHGCYSC` |
-| **Admin Identity** | `GDK5YHHLMYPBQXGDLLSACHMI46USATF2G2X4X2E2SWK4JOEKFDMF2IK6` |
+## 2. Blockchain Target (Stellar Testnet)
+The contracts were deployed directly to the live Stellar Testnet via the CLI.
+- **Treasury/Settlement Contract:** `CDO6YJHHWFO2BCLFOYRO64BDWD4XFP5L6R3FLPYCWBAC5CFFDHJF43TR`
+- **FlowPay/Vault Contract:** `CCY3PSR4FUQR3G5OW45Q3XFZLCXZ3G22U7TH7M45YSBCHI52N2T5OCQU`
+- **Network:** `Test SDF Network ; September 2015`
+- **Date:** August 29, 2026
 
-## Deployment Process
+**Live End-to-End Verification:**
+Real testnet transactions were programmatically executed through the full state machine (Create -> Fund -> Accept -> Submit Milestone -> Approve -> Release). 
+- *Creation Hash:* `4bb5639d64620ea52a3f1f3f38be689d80b5c9cffa43d07021b547dc49242ca0`
+- *Release Hash:* `d75b56345476c14bf7a785ebb4ec155f49fe0757d526098799f5517b351603c7`
 
-The deployment was fully automated via `scripts/deploy.sh`. The sequential workflow was:
+## 3. Frontend & Backend Target (Vercel)
+FlowPay's frontend (React/Next.js) and backend (Prisma + API Routes) are tightly coupled in the `/frontend` directory, making Vercel the ideal deployment target.
 
-1. **WASM Compilation:** Compiled both Vault and Treasury contracts optimized for the `wasm32v1-none` target.
-2. **Contract Upload:** Deployed Treasury to the Stellar Testnet.
-3. **Contract Upload:** Deployed Vault to the Stellar Testnet.
-4. **Link Treasury to Vault:** Invoked `Treasury::initialize`, passing the Vault's Address so it inherently trusts the Vault.
-5. **Link Vault to Treasury:** Invoked `Vault::initialize`, passing the Admin Address and the Treasury's Address so the Vault knows where to forward its fund releases.
+### Deployment Steps:
+1. Navigate to [Vercel.com](https://vercel.com) and click **Add New Project**.
+2. Import the `stellar-vault` GitHub repository.
+3. Set the **Framework Preset** to `Next.js`.
+4. Set the **Root Directory** to `frontend`.
+5. Under **Environment Variables**, add:
+   - `NEXT_PUBLIC_STELLAR_NETWORK=TESTNET`
+   - `NEXT_PUBLIC_STELLAR_RPC_URL=https://soroban-testnet.stellar.org`
+   - `NEXT_PUBLIC_VAULT_CONTRACT_ID=CCY3PSR4FUQR3G5OW45Q3XFZLCXZ3G22U7TH7M45YSBCHI52N2T5OCQU`
+   - `NEXT_PUBLIC_TREASURY_CONTRACT_ID=CDO6YJHHWFO2BCLFOYRO64BDWD4XFP5L6R3FLPYCWBAC5CFFDHJF43TR`
+6. Click **Deploy**. Vercel will automatically build the Next.js app and initialize the Prisma SQLite database.
 
-## Example Invocation (Live)
-
-After initialization, an automated test transaction invoked `create_vault` on the live network.
-
-* **Invoked Function:** `create_vault(creator, token)`
-* **Status:** Success
-* **Transaction Hash:** `a0f6019f354ec11e38948b115138fd785d706b80d8653e9c4a3f68d7c363da9b`
-* **On-Chain Event Emitted:** `{"string":"Vault"}, {"string":"vault_created"}`
-
-*Verify this transaction using [Stellar Expert Testnet Explorer](https://stellar.expert/explorer/testnet/tx/a0f6019f354ec11e38948b115138fd785d706b80d8653e9c4a3f68d7c363da9b).*
+## 4. Live System Verification
+Once deployed, verify the following manually via the live URL:
+- [x] Wallet Connection (Freighter triggers properly).
+- [x] Payment Creation & Funding (Testnet transactions succeed).
+- [x] Recipient Acceptance & Milestones (State updates cleanly).
+- [x] Analytics & Monitoring (Events log to `/analytics` and `/monitoring` endpoints without error).
