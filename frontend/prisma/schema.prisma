@@ -41,3 +41,12 @@ model AnalyticsEvent {
   metadata  String?  // JSON string
   timestamp DateTime @default(now())
 }
+
+model SystemLog {
+  id        String   @id @default(uuid())
+  level     String   // info, warn, error, fatal
+  context   String   // frontend, backend, blockchain
+  message   String
+  metadata  String?  // JSON
+  timestamp DateTime @default(now())
+}
