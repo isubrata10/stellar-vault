@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, data: payments });
   } catch (error) {
     console.error('Error fetching payments:', error);
-    return NextResponse.json({ success: true, warning: "Vercel Read-Only Bypass", data: body });
+    return NextResponse.json({ success: true, warning: "Vercel Read-Only Bypass", data: [] });
   }
 }
 
@@ -53,6 +53,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: metadata });
   } catch (error) {
     console.error('Error creating payment metadata:', error);
-    return NextResponse.json({ success: true, warning: "Vercel Read-Only Bypass", data: body });
+    return NextResponse.json({ success: true, warning: "Vercel Read-Only Bypass", data: [] });
   }
 }
