@@ -44,10 +44,12 @@ export async function invokeContract({
         .build();
 
         onStatus?.('signing');
-        const signedTx = await signTransaction(tx.toXDR(), { network: NETWORK_PASSPHRASE });
+        const signedTxResponse = await signTransaction(tx.toXdr(), { networkPassphrase: NETWORK_PASSPHRASE });
+        if (signedTxResponse.error) throw new Error(signedTxResponse.error);
+        const signedTxXdr = typeof signedTxResponse === "string" ? signedTxResponse : signedTxResponse.signedTxXdr || (signedTxResponse as any).tx || signedTxResponse;
         
         onStatus?.('submitting');
-        const transactionToSubmit = TransactionBuilder.fromXDR(signedTx, NETWORK_PASSPHRASE) as Transaction;
+        const transactionToSubmit = TransactionBuilder.fromXdr(signedTxXdr as string, NETWORK_PASSPHRASE) as Transaction;
         const response = await server.sendTransaction(transactionToSubmit);
 
         if (response.status !== "PENDING") {
