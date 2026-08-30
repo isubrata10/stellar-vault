@@ -32,7 +32,7 @@ export async function invokeContract({
             throw new Error("Account not found on network. Please fund it first.");
         }
 
-        onStatus?.('waiting for wallet');
+        onStatus?.('simulating');
         const contract = new Contract(contractId);
         
         const tx = new TransactionBuilder(sourceAccount, {
@@ -43,8 +43,11 @@ export async function invokeContract({
         .setTimeout(30)
         .build();
 
+        // Must prepare Soroban transaction (simulate + add footprint)
+        const preparedTx = await server.prepareTransaction(tx);
+
         onStatus?.('signing');
-        const signedTxResponse = await signTransaction(tx.toXdr(), { networkPassphrase: NETWORK_PASSPHRASE });
+        const signedTxResponse = await signTransaction(preparedTx.toXdr(), { networkPassphrase: NETWORK_PASSPHRASE });
         if (signedTxResponse.error) throw new Error(signedTxResponse.error);
         const signedTxXdr = typeof signedTxResponse === "string" ? signedTxResponse : signedTxResponse.signedTxXdr || (signedTxResponse as any).tx || signedTxResponse;
         
@@ -53,7 +56,7 @@ export async function invokeContract({
         const response = await server.sendTransaction(transactionToSubmit);
 
         if (response.status !== "PENDING") {
-            throw new Error("Transaction failed on submission");
+            throw new Error(`Transaction failed on submission: ${JSON.stringify(response)}`);
         }
 
         onStatus?.('confirming');
