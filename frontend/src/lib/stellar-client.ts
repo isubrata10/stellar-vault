@@ -3,7 +3,7 @@ import { signTransaction } from '@stellar/freighter-api';
 
 export const RPC_URL = process.env.NEXT_PUBLIC_STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org';
 export const NETWORK_PASSPHRASE = process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE || Networks.TESTNET;
-export const FLOWPAY_CONTRACT = process.env.NEXT_PUBLIC_FLOWPAY_CONTRACT_ID || '';
+export const FLOWPAY_CONTRACT = process.env.NEXT_PUBLIC_FLOWPAY_CONTRACT_ID || process.env.NEXT_PUBLIC_VAULT_CONTRACT_ID || '';
 
 const server = new rpc.Server(RPC_URL);
 
@@ -28,80 +28,52 @@ export async function invokeContract({
         let sourceAccount;
         try {
             sourceAccount = await server.getAccount(publicKey);
-        } catch {
-            throw new Error(`Failed to load account ${publicKey} on network`);
+        } catch (e: unknown) {
+            throw new Error("Account not found on network. Please fund it first.");
         }
 
+        onStatus?.('waiting for wallet');
         const contract = new Contract(contractId);
         
-        // 1. Build Transaction
         const tx = new TransactionBuilder(sourceAccount, {
-            fee: '1000',
+            fee: "100000",
             networkPassphrase: NETWORK_PASSPHRASE,
         })
         .addOperation(contract.call(method, ...args))
         .setTimeout(30)
         .build();
 
-        // 2. Prepare Transaction using simulation
-        const sim = await server.simulateTransaction(tx);
+        onStatus?.('signing');
+        const signedTx = await signTransaction(tx.toXDR(), { network: NETWORK_PASSPHRASE });
         
-        console.log("Simulation Result:", sim);
+        onStatus?.('submitting');
+        const transactionToSubmit = TransactionBuilder.fromXDR(signedTx, NETWORK_PASSPHRASE) as Transaction;
+        const response = await server.sendTransaction(transactionToSubmit);
 
-        if (rpc.Api.isSimulationError(sim)) {
-             throw new Error(`Simulation failure: typeof sim.error === 'string' ? sim.error : 'Unknown'`);
+        if (response.status !== "PENDING") {
+            throw new Error("Transaction failed on submission");
         }
 
-        if (rpc.Api.isSimulationRestore(sim)) {
-             throw new Error(`Contract data needs restoration. State is archived.`);
-        }
-
-        if (!rpc.Api.isSimulationSuccess(sim)) {
-             throw new Error("Simulation failed");
-        }
-
-        // Assembling tx for signing
-        const builtPrepared = rpc.assembleTransaction(tx, sim);
+        onStatus?.('confirming');
         
-        // 3. Wallet Interaction (Sign)
-        onStatus?.('wallet interaction');
-        
-        const signedResponse = await signTransaction(builtPrepared.build().toXdr(), { networkPassphrase: NETWORK_PASSPHRASE });
-        if (signedResponse.error) throw new Error(`Wallet rejection: ${signedResponse.error}`);
-        if (!signedResponse.signedTxXdr) throw new Error("Wallet did not return signed transaction");
-
-        // 4. Submit
-        onStatus?.('submitted');
-        
-        const transactionToSubmit = TransactionBuilder.fromXdr(signedResponse.signedTxXdr, NETWORK_PASSPHRASE) as Transaction;
-        const sendResponse = await server.sendTransaction(transactionToSubmit);
-        
-        if (sendResponse.status === 'ERROR') {
-             throw new Error(`Submission failed: ${sendResponse.errorResult?.toXdr('base64') || 'Unknown error'}`);
-        }
-
         // Wait for confirmation
-        let txStatus = 'PENDING';
         let txResponse;
-        while (txStatus === 'PENDING') {
-            await new Promise(r => setTimeout(r, 2000));
-            txResponse = await server.getTransaction(sendResponse.hash);
-            txStatus = txResponse.status;
-            
-            if (txStatus === 'SUCCESS') {
-                 onStatus?.('confirmed');
-                 return txResponse;
-            } else if (txStatus === 'FAILED') {
-                 throw new Error(`Transaction failed on chain`);
+        for (let i = 0; i < 15; i++) {
+            txResponse = await server.getTransaction(response.hash);
+            if (txResponse.status === "SUCCESS") {
+                onStatus?.('success');
+                return txResponse;
+            } else if (txResponse.status === "FAILED") {
+                throw new Error("Transaction failed on chain");
             }
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        
-        return txResponse;
-    } catch (e: unknown) {
-        onStatus?.('failed');
-        if (e instanceof Error) {
-            throw e;
+
+        throw new Error("Transaction confirmation timeout");
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            throw new Error(error.message);
         }
-        throw new Error(String(e));
+        throw new Error("Unknown error occurred");
     }
 }
