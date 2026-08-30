@@ -3,7 +3,7 @@ import { signTransaction } from '@stellar/freighter-api';
 
 export const RPC_URL = process.env.NEXT_PUBLIC_STELLAR_RPC_URL || 'https://soroban-testnet.stellar.org';
 export const NETWORK_PASSPHRASE = process.env.NEXT_PUBLIC_STELLAR_NETWORK_PASSPHRASE || Networks.TESTNET;
-export const FLOWPAY_CONTRACT = process.env.NEXT_PUBLIC_FLOWPAY_CONTRACT_ID || process.env.NEXT_PUBLIC_VAULT_CONTRACT_ID || '';
+export const FLOWPAY_CONTRACT = process.env.NEXT_PUBLIC_FLOWPAY_CONTRACT_ID || process.env.NEXT_PUBLIC_VAULT_CONTRACT_ID || 'CCY3PSR4FUQR3G5OW45Q3XFZLCXZ3G22U7TH7M45YSBCHI52N2T5OCQU';
 
 const server = new rpc.Server(RPC_URL);
 
